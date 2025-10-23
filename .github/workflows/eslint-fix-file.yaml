@@ -1,0 +1,115 @@
+name: ESLint Fix File
+
+on:
+  workflow_dispatch:
+    inputs:
+      repository:
+        description: "repository"
+        required: true
+        type: string
+
+      branch:
+        description: "branch"
+        required: true
+        type: string
+
+      relative_file_path:
+        description: "relative file path"
+        required: true
+        type: string
+
+      eslint_rule:
+        description: "eslint rule (example: quotes)"
+        required: true
+        type: string
+
+      node_version:
+        description: "node version"
+        default: "20.19.4"
+        required: true
+        type: string
+
+      create_pr:
+        description: "create a pull request"
+        required: false
+        type: boolean
+        default: false
+
+jobs:
+  eslint-fix:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+      pull-requests: write
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          repository: ${{ inputs.repository }}
+          ref: ${{ inputs.branch }}
+          token: ${{ secrets.PERSONAL_GITHUB_TOKEN }}
+          persist-credentials: true
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v5
+        with:
+          node-version: ${{ inputs.node_version }}
+          cache: 'npm'
+
+      - name: Install dependencies
+        run: npm install
+
+      - name: Run ESLint with --fix-dry-run
+        run: |
+          NODE_OPTIONS="--max-old-space-size=16384" \
+          npx eslint \
+          "${{ inputs.relative_file_path }}" \
+          --fix-dry-run \
+          --format stylish \
+          --color \
+          --rule '${{ inputs.eslint_rule }}: error' \
+
+      - name: Run ESLint with --fix
+        run: |
+          NODE_OPTIONS="--max-old-space-size=16384" \
+          npx eslint \
+          "${{ inputs.relative_file_path }}" \
+          --fix \
+          --rule '${{ inputs.eslint_rule }}: error' \
+
+      - name: Setup Git user
+        run: |
+          git config --global user.name "github-actions[bot]"
+          git config --global user.email "41898282+github-actions[bot]@users.noreply.github.com"
+
+      - name: Commit changes (if any)
+        run: |
+          git add .
+          git status -s
+          if git diff --cached --quiet; then
+            echo "No changes to commit"
+            exit 0
+          fi
+          git commit -m "fix(eslint): auto-fix ${{ inputs.eslint_rule }} rule violations"
+
+      - name: Push changes to new branch
+        if: ${{ inputs.create_pr == true }}
+        id: push
+        run: |
+          BRANCH_NAME="eslint-fix/${{ inputs.eslint_rule }}-$(date +%s)"
+          git push origin HEAD:$BRANCH_NAME
+          echo "BRANCH_NAME=$BRANCH_NAME" >> $GITHUB_ENV
+
+      - name: Create Pull Request
+        if: ${{ inputs.create_pr == true }}
+        run: |
+          gh pr create \
+            --repo "${{ inputs.repository }}" \
+            --title "fix(eslint): auto-fix ${{ inputs.eslint_rule }} rule violations" \
+            --body "Automatically fixed ESLint ${{ inputs.eslint_rule }} rule violations." \
+            --base "${{ inputs.branch }}" \
+            --head "$BRANCH_NAME"
+        env:
+          GITHUB_TOKEN: ${{ secrets.PERSONAL_GITHUB_TOKEN }}
+

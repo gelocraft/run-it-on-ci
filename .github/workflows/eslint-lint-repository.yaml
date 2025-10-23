@@ -1,0 +1,53 @@
+name: ESLint Lint Repository
+
+on:
+  workflow_dispatch:
+    inputs:
+
+      repository:
+        description: "repository"
+        required: true
+        type: string
+
+      branch:
+        description: "branch"
+        required: true
+        type: string
+
+      eslint_rule:
+        description: "eslint rule (example: quotes)"
+        required: true
+        type: string
+
+      node_version:
+        description: "node version"
+        default: "20.19.4"
+        required: true
+        type: string
+
+jobs:
+  eslint:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          repository: ${{ inputs.repository }}
+          ref: ${{ inputs.branch }}
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v5
+        with:
+          node-version: ${{ inputs.node_version }}
+          cache: 'npm'
+
+      - name: Install dependencies
+        run: npm install
+
+      - name: Run ESLint
+        run: |
+          NODE_OPTIONS="--max-old-space-size=16384" \
+          npx eslint . \
+          --rule '${{ inputs.eslint_rule }}: error' \
+          --quiet
