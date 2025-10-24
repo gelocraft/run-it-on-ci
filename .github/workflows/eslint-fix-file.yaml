@@ -30,8 +30,17 @@ on:
         type: string
 
       create_pr:
-        description: "create a pull request"
+        description: "create pull request"
+        type: boolean
+        default: false
+
+      upstream:
+        description: "upstream repository"
         required: false
+        type: string
+
+      upstream_pr:
+        description: "create upstream pull request"
         type: boolean
         default: false
 
@@ -78,10 +87,32 @@ jobs:
           --fix \
           --rule '${{ inputs.eslint_rule }}: error' \
 
+      - name: Run prettier --write
+        run: |
+          if ! git diff --quiet; then
+            npx prettier --write ${{ inputs.relative_file_path }}
+          fi
+
       - name: Setup Git user
         run: |
-          git config --global user.name "github-actions[bot]"
-          git config --global user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git config user.name "gelocraft"
+          git config user.email "gelocraft@users.noreply.github.com"
+          git config user.signingkey ~/.ssh/signingkey.pub
+
+          git config tag.gpgsign true
+          git config commit.gpgsign true
+          git config gpg.format ssh
+          git config gpg.ssh.allowedSignersFile ~/.ssh/allowedsigners
+
+          mkdir -p ~/.ssh
+          echo "${{ secrets.SSH_SIGNING_KEY }}" > ~/.ssh/signingkey
+          chmod 600 ~/.ssh/signingkey
+
+          echo "${{ secrets.SSH_SIGNING_KEY_PUB }}" > ~/.ssh/signingkey.pub
+          chmod 600 ~/.ssh/signingkey.pub
+
+          echo "${{ secrets.SSH_ALLOWED_SIGNERS }}" > ~/.ssh/allowedsigners
+          chmod 600 ~/.ssh/allowedsigners
 
       - name: Commit changes (if any)
         run: |
@@ -89,7 +120,7 @@ jobs:
           git status -s
           if git diff --cached --quiet; then
             echo "No changes to commit"
-            exit 0
+            exit 1
           fi
           git commit -m "fix(eslint): auto-fix ${{ inputs.eslint_rule }} rule violations"
 
@@ -101,8 +132,8 @@ jobs:
           git push origin HEAD:$BRANCH_NAME
           echo "BRANCH_NAME=$BRANCH_NAME" >> $GITHUB_ENV
 
-      - name: Create Pull Request
-        if: ${{ inputs.create_pr == true }}
+      - name: Create PR origin branch
+        if: ${{ inputs.create_pr == true && inputs.upstream_pr == false }}
         run: |
           gh pr create \
             --repo "${{ inputs.repository }}" \
@@ -113,3 +144,14 @@ jobs:
         env:
           GITHUB_TOKEN: ${{ secrets.PERSONAL_GITHUB_TOKEN }}
 
+      - name: Create PR upstream branch
+        if: ${{ inputs.create_pr == true && inputs.upstream_pr == true }}
+        run: |
+          gh pr create \
+            --repo "${{ inputs.upstream }}" \
+            --title "fix(eslint): auto-fix ${{ inputs.eslint_rule }} rule violations" \
+            --body "Automatically fixed ESLint ${{ inputs.eslint_rule }} rule violations." \
+            --base "main" \
+            --head "$BRANCH_NAME"
+        env:
+          GITHUB_TOKEN: ${{ secrets.PERSONAL_GITHUB_TOKEN }}

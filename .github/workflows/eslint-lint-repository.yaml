@@ -14,10 +14,10 @@ on:
         required: true
         type: string
 
-      eslint_rule:
-        description: "eslint rule (example: quotes)"
-        required: true
-        type: string
+      # eslint_rule:
+      #   description: "eslint rule (example: quotes)"
+      #   required: true
+      #   type: string
 
       node_version:
         description: "node version"
@@ -48,6 +48,6 @@ jobs:
       - name: Run ESLint
         run: |
           NODE_OPTIONS="--max-old-space-size=16384" \
-          npx eslint . \
-          --rule '${{ inputs.eslint_rule }}: error' \
-          --quiet
+          npx eslint . --quiet
+          # npx eslint $(git diff --diff-filter=AMR --name-only origin/main HEAD) --quiet
+          # --rule '${{ inputs.eslint_rule }}: error' \

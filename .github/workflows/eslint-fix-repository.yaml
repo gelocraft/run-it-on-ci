@@ -57,23 +57,39 @@ jobs:
         run: npm install
 
       - name: Run ESLint with --fix
+        continue-on-error: true
         run: |
           NODE_OPTIONS="--max-old-space-size=16384" \
-          npx eslint . \
-          --fix \
-          --rule '${{ inputs.eslint_rule }}: error' \
-        continue-on-error: true
+          npx eslint . --fix
 
       - name: Run prettier --write
         run: |
-          git status -s | \
-          awk '{ print $2 }' | \
-          xargs -I {} npx prettier --write {}
+          if ! git diff --quiet; then
+            git diff --diff-filter=M --name-only HEAD | \
+            xargs -I {} npx prettier --write {}
+          fi
 
       - name: Setup Git user
         run: |
-          git config user.name "github-actions[bot]"
-          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git config user.name "gelocraft"
+          git config user.email "gelocraft@users.noreply.github.com"
+          git config user.signingkey ~/.ssh/signingkey.pub
+
+          git config tag.gpgsign true
+          git config commit.gpgsign true
+          git config gpg.format ssh
+          git config gpg.ssh.allowedSignersFile ~/.ssh/allowedsigners
+
+          mkdir -p ~/.ssh
+          echo "${{ secrets.SSH_SIGNING_KEY }}" > ~/.ssh/signingkey
+          chmod 600 ~/.ssh/signingkey
+
+          echo "${{ secrets.SSH_SIGNING_KEY_PUB }}" > ~/.ssh/signingkey.pub
+          chmod 600 ~/.ssh/signingkey.pub
+
+          echo "${{ secrets.SSH_ALLOWED_SIGNERS }}" > ~/.ssh/allowedsigners
+          chmod 600 ~/.ssh/allowedsigners
+
 
       - name: Commit changes (if any)
         run: |
