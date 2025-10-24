@@ -1,9 +1,8 @@
-name: ESLint Lint Repository
+name: ESLint Lint File
 
 on:
   workflow_dispatch:
     inputs:
-
       repository:
         description: "repository"
         required: true
@@ -11,6 +10,11 @@ on:
 
       branch:
         description: "branch"
+        required: true
+        type: string
+
+      relative_file_path:
+        description: "relative file path"
         required: true
         type: string
 
@@ -26,7 +30,7 @@ on:
         type: string
 
 jobs:
-  eslint:
+  eslint-lint-file:
     runs-on: ubuntu-latest
 
     steps:
@@ -35,6 +39,8 @@ jobs:
         with:
           repository: ${{ inputs.repository }}
           ref: ${{ inputs.branch }}
+          token: ${{ secrets.PERSONAL_GITHUB_TOKEN }}
+          persist-credentials: true
 
       - name: Setup Node.js
         uses: actions/setup-node@v5
@@ -45,10 +51,11 @@ jobs:
       - name: Install dependencies
         run: npm install
 
-      - name: Run ESLint
+      - name: Run ESLint File
         run: |
           NODE_OPTIONS="--max-old-space-size=16384" \
-          npx eslint . \
+          npx eslint \
+          "${{ inputs.relative_file_path }}" \
           --rule '${{ inputs.eslint_rule }}: error' \
           --max-warnings=241 \
           --cache --cache-location=node_modules/.cache/eslint
