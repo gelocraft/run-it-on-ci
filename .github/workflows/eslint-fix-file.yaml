@@ -74,9 +74,10 @@ jobs:
         run: |
           NODE_OPTIONS="--max-old-space-size=16384" \
           npx eslint \
-          "${{ inputs.relative_file_path }}" \
+          ${{ inputs.relative_file_path }} \
           --fix \
           --rule '${{ inputs.eslint_rule }}: error' \
+          --concurrency=auto
 
       - name: Run prettier --write
         run: |
@@ -119,7 +120,7 @@ jobs:
         if: ${{ inputs.create_pr == true }}
         id: push
         run: |
-          BRANCH_NAME="eslint-fix-file/${{ inputs.relative_file_path }}-$(date +%s)"
+          BRANCH_NAME="eslint-fix-file/$(date +%s)"
           git push origin HEAD:$BRANCH_NAME
           echo "BRANCH_NAME=$BRANCH_NAME" >> $GITHUB_ENV
 

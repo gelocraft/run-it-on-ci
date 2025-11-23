@@ -61,7 +61,8 @@ jobs:
         run: |
           NODE_OPTIONS="--max-old-space-size=16384" \
           npx eslint . --fix \
-          --rule '${{ inputs.eslint_rule }}: error'
+          --rule '${{ inputs.eslint_rule }}: error' \
+          --concurrency=auto
 
       - name: Run prettier --write
         run: |

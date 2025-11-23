@@ -51,4 +51,5 @@ jobs:
           npx eslint . \
           --rule '${{ inputs.eslint_rule }}: error' \
           --max-warnings=241 \
-          --cache --cache-location=node_modules/.cache/eslint
+          --cache --cache-location=node_modules/.cache/eslint \
+          --concurrency=auto
